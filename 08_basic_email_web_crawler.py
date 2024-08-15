@@ -1,26 +1,45 @@
 import requests
 import re
+try:
+    from urllib.parse import urljoin
+except ImportError:
+    from urlparse import urljoin
 
-#get url
-#url=input('Enter a URL (include 'http://'):')--this is wrong
-url = input('Enter a URL (include `http://`): ')
-
-
-#connect to the url
-website=requests.get(url)
-
-#read html
-html=website.text
+# regex
+email_re = re.compile(r'([\w\.,]+@[\w\.,]+\.\w+)')
+link_re = re.compile(r'href="(.*?)"')
 
 
-#use re.findall to grab all the links
-links = re.findall('"((http|ftp)s?://.*?)"', html)
+def crawl(url):
 
-emails=re.findall('([\w\.,]+@[\w\.,]+\.\w+)',html)
+    result = set()
 
+    req = requests.get(url)
 
-#prints the number of links in the list
-print("\nFound {} links".format(len(links)))
+    # Check if successful
+    if(req.status_code != 200):
+        return []
 
-for email in emails:
-	print(email)
+    # Find links
+    links = link_re.findall(req.text)
+
+    print("\nFound {} links".format(len(links)))
+
+    # Search links for emails
+    for link in links:
+
+        # Get an absolute URL for a link
+        link = urljoin(url, link)
+
+        # Find all emails on current page
+        result.update(email_re.findall(req.text))
+
+    return result
+
+if __name__ == '__main__':
+    emails = crawl('http://www.realpython.com')
+
+    print("\nScrapped e-mail addresses:")
+    for email in emails:
+        print(email)
+    print("\n")
